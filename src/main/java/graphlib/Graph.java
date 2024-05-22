@@ -420,6 +420,7 @@ public class Graph
                 numComponents++;
                 dfs(node.getName(), new NodeVisitor()
                 {
+                    @Override
                     public void visit(Node node)
                     {
                         visited.add(node);
@@ -430,23 +431,157 @@ public class Graph
         return numComponents;
     }
 
-    public static Graph readIslandFile(InputStream in) 
-    {
+    // part 1: how many components in a graph
+    // method already implemented below
+    // public int getNumComponents()
+    // {
+    //     Set<Node> visited = new HashSet<>();
+    //     int numComponents = 0;
+    //     for (Node node : nodes.values())
+    //     {
+    //         if (!visited.contains(node))
+    //         {
+    //             numComponents++;
+    //             dfs(node.getName(), new NodeVisitor()
+    //             {
+    //                 @Override
+    //                 public void visit(Node node)
+    //                 {
+    //                     visited.add(node);
+    //                 }
+    //             });
+    //         }
+    //     }
+    //     return numComponents;
+    // }
+
+    // Part 2: Largest Island
+    public static Graph readIslandFile(InputStream in) {
+        int[][] matrix = readMatrix(in);
         Graph graph = new Graph();
-        Scanner scanner = new Scanner(in);
-        int numRows = scanner.nextInt();
-        int numCols = scanner.nextInt();
-        // TODO: pick up here
-        while (scanner.hasNext())
-        {
-            String nameA = scanner.next();
-            String nameB = scanner.next();
-            Node nodeA = graph.getOrCreateNode(nameA);
-            Node nodeB = graph.getOrCreateNode(nameB);
-            nodeA.addUnweightedUndirectedEdge(nodeB);
+        int rows = matrix.length;
+        int cols = matrix[0].length;
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                if (matrix[i][j] == 1) {
+                    Node node = graph.getOrCreateNode(i + "," + j);
+                    if (i > 0 && matrix[i-1][j] == 1) node.addUnweightedUndirectedEdge(graph.getOrCreateNode((i-1) + "," + j));
+                    if (i < rows - 1 && matrix[i+1][j] == 1) node.addUnweightedUndirectedEdge(graph.getOrCreateNode((i+1) + "," + j));
+                    if (j > 0 && matrix[i][j-1] == 1) node.addUnweightedUndirectedEdge(graph.getOrCreateNode(i + "," + (j-1)));
+                    if (j < cols - 1 && matrix[i][j+1] == 1) node.addUnweightedUndirectedEdge(graph.getOrCreateNode(i + "," + (j+1)));
+                    if (i > 0 && j > 0 && matrix[i-1][j-1] == 1) node.addUnweightedUndirectedEdge(graph.getOrCreateNode((i-1) + "," + (j-1)));
+                    if (i > 0 && j < cols - 1 && matrix[i-1][j+1] == 1) node.addUnweightedUndirectedEdge(graph.getOrCreateNode((i-1) + "," + (j+1)));
+                    if (i < rows - 1 && j > 0 && matrix[i+1][j-1] == 1) node.addUnweightedUndirectedEdge(graph.getOrCreateNode((i+1) + "," + (j-1)));
+                    if (i < rows - 1 && j < cols - 1 && matrix[i+1][j+1] == 1) node.addUnweightedUndirectedEdge(graph.getOrCreateNode((i+1) + "," + (j+1)));
+                }
+            }
         }
-        scanner.close();
         return graph;
     }
 
+    public static int[][] readMatrix(InputStream in) {
+        Scanner scanner = new Scanner(in);
+        int numRows = scanner.nextInt();
+        int numCols = scanner.nextInt();
+        int[][] matrix = new int[numRows][numCols];
+
+        // Read the matrix
+        for (int i = 0; i < numRows; i++) {
+            String line = scanner.next();
+            for (int j = 0; j < numCols; j++) {
+                matrix[i][j] = line.charAt(j) - '0';
+            }
+        }
+        scanner.close();
+        return matrix;
+    }
+
+    public int getLargestIslandSize() {
+        Set<Node> visited = new HashSet<>();
+        int largestSize = 0;
+
+        for (Node node : nodes.values()) {
+            if (!visited.contains(node)) {
+                int currentSize = dfsGetSize(node, visited);
+                largestSize = Math.max(largestSize, currentSize);
+            }
+        }
+
+        return largestSize;
+    }
+
+    private int dfsGetSize(Node start, Set<Node> visited) {
+        Stack<Node> stack = new Stack<>();
+        stack.push(start);
+        int size = 0;
+
+        while (!stack.isEmpty()) {
+            Node node = stack.pop();
+            if (visited.contains(node)) {
+                continue;
+            }
+            visited.add(node);
+            size++;
+            for (Node neighbor : node.getNeighbors()) {
+                if (!visited.contains(neighbor)) {
+                    stack.push(neighbor);
+                }
+            }
+        }
+
+        return size;
+    }
+
+    // Part 3: Inverse of a Graph
+    public Graph invertGraph() {
+        Graph invertedGraph = new Graph();
+
+        // Add all nodes to the inverted graph
+        for (Node node : nodes.values()) {
+            invertedGraph.getOrCreateNode(node.getName());
+        }
+
+        // Add inverted edges
+        for (Node node : nodes.values()) {
+            for (Node potentialNeighbor : nodes.values()) {
+                if (!node.equals(potentialNeighbor) && !node.hasEdge(potentialNeighbor)) {
+                    invertedGraph.getOrCreateNode(node.getName())
+                                  .addUnweightedUndirectedEdge(invertedGraph.getOrCreateNode(potentialNeighbor.getName()));
+                }
+            }
+        }
+
+        return invertedGraph;
+    }
+
+    // Part 4: Reachability
+    public Map<String, Set<String>> computeReachability() {
+        Map<String, Set<String>> reachabilityMap = new HashMap<>();
+
+        for (Node node : nodes.values()) {
+            Set<String> reachableNodes = new HashSet<>();
+            dfsReachability(node, reachableNodes);
+            reachabilityMap.put(node.getName(), reachableNodes);
+        }
+
+        return reachabilityMap;
+    }
+
+    private void dfsReachability(Node start, Set<String> reachableNodes) {
+        Stack<Node> stack = new Stack<>();
+        stack.push(start);
+
+        while (!stack.isEmpty()) {
+            Node node = stack.pop();
+            if (reachableNodes.contains(node.getName())) {
+                continue;
+            }
+            reachableNodes.add(node.getName());
+            for (Node neighbor : node.getNeighbors()) {
+                if (!reachableNodes.contains(neighbor.getName())) {
+                    stack.push(neighbor);
+                }
+            }
+        }
+    }
 }
